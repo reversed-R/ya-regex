@@ -12,32 +12,49 @@ pub(crate) enum Node {
 pub(crate) enum ParseError {
     UnexpectedEOF,
     UnexpectedToken(TokenKind, Vec<TokenKind>),
+    ExpectedEOF(TokenKind),
 }
 
 impl Node {
     pub(crate) fn parse(tokens: &[TokenKind]) -> Result<Self, ParseError> {
         let mut tokens = tokens.iter().peekable();
 
-        let mut left = Self::parse_expression(&mut tokens)?;
+        let seq = Self::parse_sequence(&mut tokens)?;
 
-        while tokens.peek().is_some() {
-            let right = Self::parse_expression(&mut tokens)?;
+        if let Some(t) = tokens.next() {
+            Err(ParseError::ExpectedEOF(*t))
+        } else {
+            Ok(seq)
+        }
+    }
 
-            left = Self::Concat(Box::new(left), Box::new(right));
+    pub(crate) fn parse_sequence(
+        tokens: &mut std::iter::Peekable<std::slice::Iter<'_, TokenKind>>,
+    ) -> Result<Self, ParseError> {
+        let mut left = Self::parse_binary(tokens)?;
+
+        while let Some(t) = tokens.peek() {
+            if matches!(t, TokenKind::Char(_) | TokenKind::LPare) {
+                let right = Self::parse_binary(tokens)?;
+
+                left = Self::Concat(Box::new(left), Box::new(right));
+            } else {
+                return Ok(left);
+            }
         }
 
         Ok(left)
     }
 
-    fn parse_expression(
+    fn parse_binary(
         tokens: &mut std::iter::Peekable<std::slice::Iter<'_, TokenKind>>,
     ) -> Result<Self, ParseError> {
-        let left = Self::parse_repeat(tokens)?;
+        let left = Self::parse_unary(tokens)?;
 
         if let Some(TokenKind::Bar) = tokens.peek() {
             tokens.next();
 
-            let right = Self::parse_repeat(tokens)?;
+            let right = Self::parse_unary(tokens)?;
 
             Ok(Self::Or(Box::new(left), Box::new(right)))
         } else {
@@ -45,7 +62,7 @@ impl Node {
         }
     }
 
-    fn parse_repeat(
+    fn parse_unary(
         tokens: &mut std::iter::Peekable<std::slice::Iter<'_, TokenKind>>,
     ) -> Result<Self, ParseError> {
         let left = Self::parse_atomic(tokens)?;
@@ -65,23 +82,13 @@ impl Node {
         let t = tokens.next().ok_or(ParseError::UnexpectedEOF)?;
 
         match t {
-            TokenKind::Char(c) => {
-                let mut left = Self::Char(*c);
-
-                while let Some(TokenKind::Char(c)) = tokens.peek() {
-                    tokens.next();
-
-                    left = Self::Concat(Box::new(left), Box::new(Self::Char(*c)));
-                }
-
-                Ok(left)
-            }
+            TokenKind::Char(c) => Ok(Self::Char(*c)),
             TokenKind::LPare => {
-                let expr = Self::parse_expression(tokens)?;
+                let seq = Self::parse_sequence(tokens)?;
 
                 Self::consume_token(tokens, TokenKind::RPare)?;
 
-                Ok(expr)
+                Ok(seq)
             }
             _ => Err(ParseError::UnexpectedToken(
                 *t,

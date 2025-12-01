@@ -79,6 +79,7 @@ pub struct Regex {
 pub enum RegexParseError {
     UnexpectedEOF,
     UnexpectedToken(TokenKind, Vec<TokenKind>),
+    ExpectedEOF(TokenKind),
 }
 
 impl From<ParseError> for RegexParseError {
@@ -86,6 +87,7 @@ impl From<ParseError> for RegexParseError {
         match value {
             ParseError::UnexpectedEOF => Self::UnexpectedEOF,
             ParseError::UnexpectedToken(t, expected) => Self::UnexpectedToken(t, expected),
+            ParseError::ExpectedEOF(t) => Self::ExpectedEOF(t),
         }
     }
 }
@@ -110,6 +112,10 @@ impl Display for RegexParseError {
 
                 write!(f, "]")
             }
+            Self::ExpectedEOF(t) => write!(
+                f,
+                "failed to parse regex, unexpected token found {t} but expected `EOF`"
+            ),
         }
     }
 }
