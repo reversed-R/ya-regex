@@ -22,7 +22,7 @@ impl Env {
 pub(crate) struct NfaState(u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum NfaTrans {
+pub(crate) enum NfaTrans {
     Epsilon,
     Char(char),
 }
@@ -196,6 +196,24 @@ impl Nfa {
             states,
             accept,
         }
+    }
+
+    pub fn start(&self) -> NfaState {
+        self.start
+    }
+
+    pub fn states(&self) -> &HashMap<NfaState, HashMap<NfaTrans, HashSet<NfaState>>> {
+        &self.states
+    }
+
+    pub fn accept(&self) -> NfaState {
+        self.accept
+    }
+}
+
+impl NfaState {
+    pub fn as_u32(&self) -> u32 {
+        self.0
     }
 }
 

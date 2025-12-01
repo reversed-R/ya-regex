@@ -1,3 +1,4 @@
+pub(crate) mod dfa;
 pub(crate) mod lexer;
 pub(crate) mod nfa;
 pub(crate) mod parser;
