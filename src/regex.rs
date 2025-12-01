@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Display};
 
 use crate::{
     lexer::{self, TokenKind},
@@ -86,6 +86,30 @@ impl From<ParseError> for RegexParseError {
         match value {
             ParseError::UnexpectedEOF => Self::UnexpectedEOF,
             ParseError::UnexpectedToken(t, expected) => Self::UnexpectedToken(t, expected),
+        }
+    }
+}
+
+impl Display for RegexParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UnexpectedEOF => write!(f, "failed to parse regex, unexpected `EOF` found"),
+            Self::UnexpectedToken(found, expected) => {
+                write!(
+                    f,
+                    "failed to parse regex, unexpected token found {found} but expected one of ["
+                )?;
+
+                for (i, t) in expected.iter().enumerate() {
+                    if i == expected.len() - 1 {
+                        write!(f, "{t}")?;
+                    } else {
+                        write!(f, "{t}, ")?;
+                    }
+                }
+
+                write!(f, "]")
+            }
         }
     }
 }

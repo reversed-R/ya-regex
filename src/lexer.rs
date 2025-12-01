@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenKind {
     Char(char), // single character
@@ -15,6 +17,18 @@ impl From<char> for TokenKind {
             '|' => Self::Bar,
             '*' => Self::Star,
             _ => Self::Char(value),
+        }
+    }
+}
+
+impl Display for TokenKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Char(c) => write!(f, "char `{c}`"),
+            Self::LPare => write!(f, "`(`"),
+            Self::RPare => write!(f, "`)`"),
+            Self::Bar => write!(f, "`|`"),
+            Self::Star => write!(f, "`*`"),
         }
     }
 }
