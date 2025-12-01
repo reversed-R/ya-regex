@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    lexer,
+    lexer::{self, TokenKind},
     nfa::{Nfa, NfaState, NfaTrans},
     parser::{Node, ParseError},
 };
@@ -75,17 +75,17 @@ pub struct Regex {
     nfa: Nfa,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum RegexParseError {
     UnexpectedEOF,
-    UnexpectedToken,
+    UnexpectedToken(TokenKind, Vec<TokenKind>),
 }
 
 impl From<ParseError> for RegexParseError {
     fn from(value: ParseError) -> Self {
         match value {
             ParseError::UnexpectedEOF => Self::UnexpectedEOF,
-            ParseError::UnexpectedToken => Self::UnexpectedToken,
+            ParseError::UnexpectedToken(t, expected) => Self::UnexpectedToken(t, expected),
         }
     }
 }
@@ -103,12 +103,17 @@ impl Regex {
         let mut states = HashSet::new();
         states.insert(self.nfa.start());
 
-        for c in pattern.chars() {
-            states = self.nfa.states_next(&states, &NfaTrans::Char(c));
+        if !pattern.is_empty() {
+            for c in pattern.chars() {
+                states = self.nfa.states_next(&states, &NfaTrans::Char(c));
 
-            if states.is_empty() {
-                return false;
+                if states.is_empty() {
+                    return false;
+                }
             }
+        } else {
+            // pattern が空文字列のときは開始状態からepsilon遷移をさせる
+            states = self.nfa.epsilon_next(states);
         }
 
         states.contains(&self.nfa.accept())

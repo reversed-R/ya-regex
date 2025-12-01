@@ -210,25 +210,3 @@ impl Nfa {
         self.accept
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use crate::{nfa::Nfa, parser::Node};
-//
-//     #[test]
-//     fn new_nfa() {
-//         // a(b|c)*
-//
-//         let ast = Node::Concat(
-//             Box::new(Node::Char('a')),
-//             Box::new(Node::Repeat(Box::new(Node::Or(
-//                 Box::new(Node::Char('b')),
-//                 Box::new(Node::Char('c')),
-//             )))),
-//         );
-//
-//         let nfa = Nfa::from(ast);
-//
-//         panic!("{nfa:#?}");
-//     }
-// }

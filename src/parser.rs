@@ -8,10 +8,10 @@ pub(crate) enum Node {
     Repeat(Box<Node>),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ParseError {
     UnexpectedEOF,
-    UnexpectedToken,
+    UnexpectedToken(TokenKind, Vec<TokenKind>),
 }
 
 impl Node {
@@ -32,26 +32,28 @@ impl Node {
     fn parse_expression(
         tokens: &mut std::iter::Peekable<std::slice::Iter<'_, TokenKind>>,
     ) -> Result<Self, ParseError> {
+        let left = Self::parse_repeat(tokens)?;
+
+        if let Some(TokenKind::Bar) = tokens.peek() {
+            tokens.next();
+
+            let right = Self::parse_repeat(tokens)?;
+
+            Ok(Self::Or(Box::new(left), Box::new(right)))
+        } else {
+            Ok(left)
+        }
+    }
+
+    fn parse_repeat(
+        tokens: &mut std::iter::Peekable<std::slice::Iter<'_, TokenKind>>,
+    ) -> Result<Self, ParseError> {
         let left = Self::parse_atomic(tokens)?;
 
-        if let Some(t) = tokens.peek() {
-            match t {
-                TokenKind::Bar => {
-                    tokens.next();
+        if let Some(TokenKind::Star) = tokens.peek() {
+            tokens.next();
 
-                    let right = Self::parse_atomic(tokens)?;
-
-                    Ok(Self::Or(Box::new(left), Box::new(right)))
-                }
-                TokenKind::Star => {
-                    tokens.next();
-
-                    Ok(Self::Repeat(Box::new(left)))
-                }
-                TokenKind::LPare => Ok(left),
-                TokenKind::RPare => Ok(left),
-                TokenKind::Char(_) => Ok(left),
-            }
+            Ok(Self::Repeat(Box::new(left)))
         } else {
             Ok(left)
         }
@@ -60,8 +62,20 @@ impl Node {
     fn parse_atomic(
         tokens: &mut std::iter::Peekable<std::slice::Iter<'_, TokenKind>>,
     ) -> Result<Self, ParseError> {
-        match tokens.next().ok_or(ParseError::UnexpectedEOF)? {
-            TokenKind::Char(c) => Ok(Self::Char(*c)),
+        let t = tokens.next().ok_or(ParseError::UnexpectedEOF)?;
+
+        match t {
+            TokenKind::Char(c) => {
+                let mut left = Self::Char(*c);
+
+                while let Some(TokenKind::Char(c)) = tokens.peek() {
+                    tokens.next();
+
+                    left = Self::Concat(Box::new(left), Box::new(Self::Char(*c)));
+                }
+
+                Ok(left)
+            }
             TokenKind::LPare => {
                 let expr = Self::parse_expression(tokens)?;
 
@@ -69,7 +83,10 @@ impl Node {
 
                 Ok(expr)
             }
-            _ => Err(ParseError::UnexpectedToken),
+            _ => Err(ParseError::UnexpectedToken(
+                *t,
+                vec![TokenKind::Char('c'), TokenKind::LPare],
+            )),
         }
     }
 
@@ -81,7 +98,7 @@ impl Node {
             if &t == next {
                 Ok(())
             } else {
-                Err(ParseError::UnexpectedToken)
+                Err(ParseError::UnexpectedToken(*next, vec![t]))
             }
         } else {
             Err(ParseError::UnexpectedEOF)
